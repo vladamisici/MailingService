@@ -1,0 +1,54 @@
+{
+  "name": "mail-service-nextjs",
+  "version": "2.0.0",
+  "description": "Modern email service built with Next.js, TypeScript, and Tailwind CSS",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "setup": "cp .env.example .env.local && echo 'Please edit .env.local with your SMTP settings'",
+    "clean": "rm -rf .next out",
+    "export": "next build && next export"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.14.0",
+    "dotenv": "^16.3.1",
+    "lucide-react": "^0.263.1",
+    "next": "15.4.6",
+    "nodemailer": "^6.9.7",
+    "react": "^18",
+    "react-dom": "^18",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/nodemailer": "^6.4.14",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "15.4.6",
+    "postcss": "^8",
+    "prisma": "^6.14.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  },
+  "keywords": [
+    "email",
+    "smtp",
+    "nextjs",
+    "typescript",
+    "tailwind",
+    "mailing",
+    "bulk-email",
+    "templates",
+    "dashboard"
+  ],
+  "author": "Mail Service Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

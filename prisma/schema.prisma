@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Security & Access
+model ApiKey {
+  id              String    @id @default(cuid())
+  hashedKey       String    @unique
+  name            String
+  createdAt       DateTime  @default(now())
+  lastUsed        DateTime?
+  active          Boolean   @default(true)
+  permissions     String    // Comma-separated list of permissions
+  rateLimit       Int       @default(100)
+  rateLimitWindow Int       @default(60) // in seconds
+}
+
+model Domain {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  verified Boolean  @default(false)
+  spf      Boolean  @default(false)
+  dkim     Boolean  @default(false)
+  dmarc    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Webhook {
+  id           String   @id @default(cuid())
+  url          String
+  secret       String
+  events       String   // Comma-separated list of events
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  failureCount Int      @default(0)
+}
+
+// Content
+model Template {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  subject      String
+  content      String
+  type         String   @default("html") // "html" or "text"
+  createdAt    DateTime @default(now())
+  lastModified DateTime @updatedAt
+}
+
+// Email & Analytics
+model EmailHistory {
+  id         String   @id @default(cuid())
+  recipient  String
+  subject    String
+  status     String // "queued", "sent", "failed", "delivered"
+  createdAt  DateTime @default(now())
+  sentAt     DateTime?
+  messageId  String?
+  error      String?
+  
+  events     AnalyticsEvent[]
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  type      String   // "opened", "clicked", "bounced", etc.
+  timestamp DateTime @default(now())
+  recipient String
+  userAgent String?
+  ipAddress String?
+  country   String?
+  city      String?
+  device    String?
+  
+  email   EmailHistory @relation(fields: [emailId], references: [id])
+  emailId String
+}
