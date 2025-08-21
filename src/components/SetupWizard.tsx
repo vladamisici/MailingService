@@ -657,9 +657,20 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {setupData.smtp.provider === 'gmail' ? 'App Password' : 
+                      {setupData.smtp.provider === 'gmail' ? 'App Password' :
                        setupData.smtp.provider === 'sendgrid' ? 'API Key' : 'Password'}
                     </label>
+                    {setupData.smtp.provider === 'gmail' && (
+                      <div className="mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+                          <div className="text-sm text-amber-800">
+                            <p className="font-semibold">⚠️ Gmail requires an App Password</p>
+                            <p className="mt-1">You <strong>cannot</strong> use your regular Gmail password here. You must generate an App Password.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <input
                       type="password"
                       value={setupData.smtp.pass}
@@ -667,9 +678,14 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
                         ...setupData,
                         smtp: { ...setupData.smtp, pass: e.target.value }
                       })}
-                      placeholder="••••••••••••"
+                      placeholder={setupData.smtp.provider === 'gmail' ? '16-character App Password' : "••••••••••••"}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
+                    {setupData.smtp.provider === 'gmail' && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        This is NOT your Gmail password. Click the button above to generate an App Password.
+                      </p>
+                    )}
                   </div>
 
                   <div className="pt-4 space-y-4">
@@ -983,15 +999,18 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
                   </div>
                 )}
 
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                   <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-800 mb-2">
-                        Restart Required
+                    <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-green-800 mb-2">
+                        Setup Complete! Your Mail Service is Ready
                       </p>
-                      <p className="text-sm text-amber-700">
-                        Please restart your server to apply the configuration.
+                      <p className="text-sm text-green-700 mb-4">
+                        The web interface is now ready to use. You can start sending emails through the dashboard.
+                      </p>
+                      <p className="text-sm text-green-700 font-medium">
+                        Note: The API keys above are only needed for external applications to access your API endpoints.
                       </p>
                     </div>
                   </div>
@@ -1009,11 +1028,19 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
               </ol>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex justify-center space-x-4">
               <button
-                onClick={onComplete}
-                className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                onClick={() => {
+                  // First call onComplete to set localStorage
+                  onComplete();
+                  // Then force a full page reload to pick up new environment variables
+                  setTimeout(() => {
+                    window.location.href = '/';
+                  }, 100);
+                }}
+                className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center"
               >
+                <Rocket className="h-5 w-5 mr-2" />
                 Go to Dashboard
               </button>
             </div>

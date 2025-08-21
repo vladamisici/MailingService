@@ -70,8 +70,8 @@ async function createDatabaseUrl(database: SetupData['database']): Promise<strin
   return `${database.type}://${auth}@${host}${portStr}/${name}`;
 }
 
-async function createRedisUrl(redis: SetupData['redis']): Promise<string | null> {
-  if (!redis.enabled) return null;
+async function createRedisUrl(redis: SetupData['redis'] | undefined): Promise<string | null> {
+  if (!redis || !redis.enabled) return null;
   
   if (redis.url) return redis.url;
   
@@ -157,7 +157,28 @@ export async function POST(request: NextRequest) {
       // Database might not be initialized yet, continue with setup
     }
 
-    const setupData: SetupData = await request.json();
+    const body = await request.json();
+    
+    // Ensure all required fields have defaults
+    const setupData: SetupData = {
+      database: body.database || {
+        type: 'sqlite',
+        url: 'file:./mailservice.db'
+      },
+      redis: body.redis || {
+        enabled: false
+      },
+      smtp: body.smtp,
+      email: body.email,
+      security: {
+        jwtSecret: body.security?.jwtSecret || generateApiKey(),
+        rateLimitPerMinute: body.security?.rateLimitPerMinute || 60,
+        rateLimitPerHour: body.security?.rateLimitPerHour || 1000,
+        emailsPerDay: body.security?.emailsPerDay || 10000
+      },
+      admin: body.admin,
+      publicAccess: body.publicAccess ?? false
+    };
 
     // Validate required fields
     if (!setupData.smtp?.host || !setupData.smtp?.user || !setupData.smtp?.pass) {

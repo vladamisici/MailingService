@@ -21,13 +21,15 @@ export default function Home() {
     try {
       const res = await fetch('/api/setup');
       const data = await res.json();
-      setNeedsSetup(data.needsSetup);
+      // API returns setupComplete, so needsSetup is the inverse
+      setNeedsSetup(!data.setupComplete);
       
       // Check if user has already completed setup or is returning user
       const hasCompletedSetup = localStorage.getItem('setup_completed') === 'true';
       const isReturningUser = localStorage.getItem('returning_user') === 'true';
       
-      setShowLanding(!hasCompletedSetup && !isReturningUser);
+      // Don't show landing if setup is needed or user has already seen it
+      setShowLanding(!data.setupComplete ? false : (!hasCompletedSetup && !isReturningUser));
     } catch (error) {
       console.error('Failed to check setup status:', error);
       setNeedsSetup(true);

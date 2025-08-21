@@ -64,17 +64,47 @@ export async function middleware(request: NextRequest) {
       return new NextResponse(null, { status: 200, headers: response.headers });
     }
     
-    // Apply rate limiting to API routes
-    if (!pathname.includes('/health') && !pathname.includes('/server/status')) {
+    // Define public routes
+    const alwaysPublicRoutes = ['/api/health', '/api/server/status', '/api/analytics/track'];
+    
+    // Setup routes should be public only when setup is not complete
+    const setupRoutes = ['/api/setup', '/api/setup/test-smtp'];
+    const isSetupRoute = setupRoutes.some(route => pathname.startsWith(route));
+    
+    // Skip rate limiting for setup routes and health checks
+    if (!pathname.includes('/health') && !pathname.includes('/server/status') && !isSetupRoute) {
       const rateLimitResponse = await apiRateLimiter(request);
       if (rateLimitResponse.status === 429) {
         return rateLimitResponse;
       }
     }
     
-    // Apply authentication to protected API routes
-    const publicRoutes = ['/api/health', '/api/server/status', '/api/analytics/track'];
-    if (!publicRoutes.some(route => pathname.startsWith(route))) {
+    // Check if setup is complete (but not for setup routes themselves to avoid recursion)
+    let setupComplete = false;
+    if (!isSetupRoute) {
+      // Check if we have a JWT secret configured as a proxy for setup completion
+      setupComplete = !!process.env.JWT_SECRET;
+    }
+    
+    // Check if this is a same-origin request (from the web interface itself)
+    const requestOrigin = request.headers.get('origin') || '';
+    const referer = request.headers.get('referer') || '';
+    const host = request.headers.get('host') || '';
+    
+    // Same-origin means the request is coming from the web interface itself
+    const isSameOrigin = !requestOrigin || // No origin header usually means same-origin
+                        requestOrigin.includes(host) ||
+                        referer.includes(host);
+    
+    // Determine if authentication is required
+    const isPublicRoute = alwaysPublicRoutes.some(route => pathname.startsWith(route));
+    const isSetupPublicRoute = isSetupRoute && !setupComplete;
+    
+    // Only require auth for external API calls (not same-origin requests from the web interface)
+    const requiresAuth = !isPublicRoute && !isSetupPublicRoute && !isSameOrigin;
+    
+    // Apply authentication to protected API routes only for external requests
+    if (requiresAuth) {
       const authResponse = await authMiddleware(request);
       if (authResponse.status === 401 || authResponse.status === 429) {
         return authResponse;

@@ -8,7 +8,7 @@ export default function SetupPage() {
 
   const handleSetupComplete = () => {
     // Save setup completion status
-    localStorage.setItem('setupComplete', 'true');
+    localStorage.setItem('setup_completed', 'true');
     // Redirect to main page
     router.push('/');
   };
