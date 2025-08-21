@@ -1,8 +1,8 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
@@ -13,13 +13,18 @@ export const metadata: Metadata = {
   description: 'A self-hosted email API server with queue management, monitoring, and configuration',
   keywords: 'email api, smtp server, self-hosted email, mail api, email service',
   authors: [{ name: 'Mail API Server' }],
-  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
-  themeColor: '#007AFF',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Mail API Server',
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#007AFF',
 }
 
 export default function RootLayout({

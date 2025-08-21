@@ -1,101 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiKeyManager, authenticateRequest, requirePermission } from '@/lib/auth';
+import { authenticateRequest, requirePermission } from '@/lib/auth';
+import { apiKeyService } from '@/lib/db';
+import { createApiKeySchema } from '@/lib/validation';
 
+// Get all API keys
 export async function GET(request: NextRequest) {
-  const auth = authenticateRequest(request);
-  
-  if (!auth.success) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
-  }
-
-  // Only allow admin access for key management
-  if (auth.apiKey && !requirePermission(auth.apiKey, 'admin')) {
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-  }
-
   try {
-    const keys = apiKeyManager.getAllKeys();
-    return NextResponse.json(keys);
+    // Authenticate request
+    const auth = await authenticateRequest(request);
+    
+    if (!auth.success) {
+      return NextResponse.json({ error: auth.error }, { status: 401 });
+    }
+
+    // Check permissions
+    if (auth.apiKey && !requirePermission(auth.apiKey, 'admin')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    // Get all API keys
+    const keys = await apiKeyService.getAll();
+    
+    // Don't expose the hashed keys
+    const sanitizedKeys = keys.map(key => ({
+      id: key.id,
+      name: key.name,
+      key: 'sk_live_' + '*'.repeat(28), // Masked key
+      createdAt: key.createdAt.toISOString(),
+      lastUsed: key.lastUsed?.toISOString() || null,
+      permissions: key.permissions.split(','),
+      active: key.active,
+      rateLimit: key.rateLimit,
+      rateLimitWindow: key.rateLimitWindow,
+    }));
+
+    return NextResponse.json({ keys: sanitizedKeys });
   } catch (error) {
-    console.error('Failed to get API keys:', error);
-    return NextResponse.json({ error: 'Failed to retrieve API keys' }, { status: 500 });
+    console.error('Get API keys error:', error);
+    return NextResponse.json({ error: 'Failed to get API keys' }, { status: 500 });
   }
 }
 
+// Create new API key
 export async function POST(request: NextRequest) {
-  const auth = authenticateRequest(request);
-  
-  if (!auth.success) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
-  }
-
-  if (auth.apiKey && !requirePermission(auth.apiKey, 'admin')) {
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-  }
-
   try {
-    const body = await request.json();
-    const { name, permissions = ['send'] } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: 'API key name is required' }, { status: 400 });
+    // Authenticate request
+    const auth = await authenticateRequest(request);
+    
+    if (!auth.success) {
+      return NextResponse.json({ error: auth.error }, { status: 401 });
     }
 
-    const newKey = apiKeyManager.generateKey(name, permissions);
+    // Check permissions
+    if (auth.apiKey && !requirePermission(auth.apiKey, 'admin')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    // Validate input
+    const body = await request.json();
+    const validation = createApiKeySchema.safeParse(body);
     
+    if (!validation.success) {
+      return NextResponse.json({ 
+        error: 'Validation failed', 
+        errors: validation.error.issues 
+      }, { status: 400 });
+    }
+
+    // Create API key
+    const apiKey = await apiKeyService.create(
+      validation.data.name,
+      validation.data.permissions || ['send']
+    );
+
     return NextResponse.json({
-      success: true,
-      message: 'API key created successfully',
-      key: newKey
+      id: apiKey.id,
+      name: apiKey.name,
+      key: apiKey.key, // This is the raw key, only shown once
+      createdAt: apiKey.createdAt.toISOString(),
+      permissions: apiKey.permissions.split(','),
     });
   } catch (error) {
-    console.error('Failed to create API key:', error);
+    console.error('Create API key error:', error);
     return NextResponse.json({ error: 'Failed to create API key' }, { status: 500 });
-  }
-}
-
-export async function PATCH(request: NextRequest) {
-  const auth = authenticateRequest(request);
-  
-  if (!auth.success) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
-  }
-
-  if (auth.apiKey && !requirePermission(auth.apiKey, 'admin')) {
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-  }
-
-  try {
-    const body = await request.json();
-    const { id, action } = body;
-
-    if (!id || !action) {
-      return NextResponse.json({ error: 'Key ID and action are required' }, { status: 400 });
-    }
-
-    let success = false;
-    let message = '';
-
-    switch (action) {
-      case 'toggle':
-        success = apiKeyManager.toggleKey(id);
-        message = success ? 'API key status updated' : 'API key not found';
-        break;
-      case 'delete':
-        success = apiKeyManager.deleteKey(id);
-        message = success ? 'API key deleted' : 'API key not found';
-        break;
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-    }
-
-    if (!success) {
-      return NextResponse.json({ error: message }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, message });
-  } catch (error) {
-    console.error('Failed to update API key:', error);
-    return NextResponse.json({ error: 'Failed to update API key' }, { status: 500 });
   }
 }
